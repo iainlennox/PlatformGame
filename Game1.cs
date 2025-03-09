@@ -326,7 +326,7 @@ public class Game1 : Game
 
                 // Update score based on time
                 _timeSinceStart += (float)gameTime.ElapsedGameTime.TotalSeconds;
-                _score = (int)(_timeSinceStart);
+                _score = (int)(_timeSinceStart) + (_score - (int)_timeSinceStart); // Preserve food points
 
                 _player.Update(gameTime, _platforms);
 
