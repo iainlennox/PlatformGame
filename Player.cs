@@ -34,6 +34,7 @@ public class Player
     private Texture2D bodyTexture;
     private Texture2D armTexture;
     private Texture2D legTexture;
+    private Texture2D headTexture;
     
     // Part positions relative to body
     private Vector2 leftArmPosition;
@@ -41,14 +42,17 @@ public class Player
     private Vector2 leftLegPosition;
     private Vector2 rightLegPosition;
     private Vector2 bodyOffset;
+    private Vector2 headPosition;
+    private const float HEAD_SCALE = 0.075f; // Reduced scale factor for the head texture (50% smaller)
 
     public Vector2 Position => position;
 
-    public Player(Texture2D bodyTex, Texture2D armTex, Texture2D legTex, Vector2 startPosition)
+    public Player(Texture2D bodyTex, Texture2D armTex, Texture2D legTex, Texture2D headTex, Vector2 startPosition)
     {
         this.bodyTexture = bodyTex;
         this.armTexture = armTex;
         this.legTexture = legTex;
+        this.headTexture = headTex;
         this.position = startPosition;
         this.velocity = Vector2.Zero;
         
@@ -58,6 +62,7 @@ public class Player
         rightArmPosition = new Vector2(bodyTexture.Width / 2, -bodyTexture.Height / 4);
         leftLegPosition = new Vector2(-bodyTexture.Width / 4, bodyTexture.Height / 2);
         rightLegPosition = new Vector2(bodyTexture.Width / 4, bodyTexture.Height / 2);
+        headPosition = new Vector2(0, -bodyTexture.Height);
 
         this.bounds = new Rectangle(
             (int)position.X - bodyTexture.Width / 2,
@@ -180,6 +185,10 @@ public class Player
         // Draw body
         spriteBatch.Draw(bodyTexture, position + bodyOffset, null, Color.White, 0f,
             new Vector2(bodyTexture.Width / 2, bodyTexture.Height / 2), 1f, SpriteEffects.None, 0f);
+
+        // Draw head
+        spriteBatch.Draw(headTexture, position + headPosition, null, Color.White, 0f,
+            new Vector2(headTexture.Width / 2, headTexture.Height / 2), HEAD_SCALE, SpriteEffects.None, 0f);
 
         // Draw arms with rotation
         spriteBatch.Draw(armTexture, position + leftArmPosition, null, Color.White, armRotation,

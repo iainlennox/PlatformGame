@@ -14,6 +14,7 @@ public class Game1 : Game
     private Texture2D _playerBodyTexture;
     private Texture2D _playerArmTexture;
     private Texture2D _playerLegTexture;
+    private Texture2D _playerHeadTexture;
     private Texture2D _platformTexture;
     private List<Platform> _platforms;
     private Matrix _camera;
@@ -38,6 +39,14 @@ public class Game1 : Game
     private string _highScoreText = "High Score: ";
     private string _restartPrompt = "Press SPACE to Play Again";
     private string _quitPrompt = "Press ESC to Quit";
+    private List<BackgroundLayer> _backgroundLayers;
+    private Texture2D _skyTexture;
+    private Texture2D _mountainsTexture;
+    private Texture2D _cloudsTexture;
+    private Texture2D _foodTexture;
+    private Texture2D _orangeTexture;
+    private Texture2D _bananaTexture;
+    private const int FOOD_POINTS = 10;
 
     public Game1()
     {
@@ -45,6 +54,7 @@ public class Game1 : Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         _platforms = new List<Platform>();
+        _backgroundLayers = new List<BackgroundLayer>();
         _random = new Random();
         _score = 0;
         _highScore = 0;
@@ -82,12 +92,108 @@ public class Game1 : Game
         platformColorData[0] = Color.Green;
         _platformTexture.SetData(platformColorData);
 
+        // Create food texture (yellow circle)
+        _foodTexture = new Texture2D(GraphicsDevice, 16, 16);
+        Color[] foodColorData = new Color[16 * 16];
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 16; x++)
+            {
+                float distanceFromCenter = (float)Math.Sqrt(Math.Pow(x - 8, 2) + Math.Pow(y - 8, 2));
+                if (distanceFromCenter <= 8)
+                {
+                    foodColorData[y * 16 + x] = Color.Yellow;
+                }
+                else
+                {
+                    foodColorData[y * 16 + x] = Color.Transparent;
+                }
+            }
+        }
+        _foodTexture.SetData(foodColorData);
+
+        // Create orange texture (orange circle)
+        _orangeTexture = new Texture2D(GraphicsDevice, 20, 20);
+        Color[] orangeData = new Color[20 * 20];
+        for (int y = 0; y < 20; y++)
+        {
+            for (int x = 0; x < 20; x++)
+            {
+                float distanceFromCenter = (float)Math.Sqrt(Math.Pow(x - 10, 2) + Math.Pow(y - 10, 2));
+                if (distanceFromCenter <= 10)
+                {
+                    orangeData[y * 20 + x] = Color.Orange;
+                }
+                else
+                {
+                    orangeData[y * 20 + x] = Color.Transparent;
+                }
+            }
+        }
+        _orangeTexture.SetData(orangeData);
+
+        // Create banana texture (yellow curved rectangle)
+        _bananaTexture = new Texture2D(GraphicsDevice, 24, 16);
+        Color[] bananaData = new Color[24 * 16];
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 24; x++)
+            {
+                float curve = 4 * (float)Math.Sin(x * Math.PI / 24);
+                float distanceFromCurve = Math.Abs(y - (8 + curve));
+                if (distanceFromCurve < 4)
+                {
+                    bananaData[y * 24 + x] = Color.Yellow;
+                }
+                else
+                {
+                    bananaData[y * 24 + x] = Color.Transparent;
+                }
+            }
+        }
+        _bananaTexture.SetData(bananaData);
+
         // Create the player with all body parts
-        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, new Vector2(100, 100));
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100));
 
         // Create initial platforms
         _lastPlatformX = 50;
         GenerateInitialPlatforms();
+
+        // Create background textures
+        _skyTexture = new Texture2D(GraphicsDevice, 1, 1);
+        _skyTexture.SetData(new[] { Color.LightSkyBlue });
+
+        _mountainsTexture = new Texture2D(GraphicsDevice, 800, 200);
+        Color[] mountainData = new Color[800 * 200];
+        for (int y = 0; y < 200; y++)
+        {
+            for (int x = 0; x < 800; x++)
+            {
+                // Create a mountain silhouette effect
+                float height = 100 + (float)(Math.Sin(x * 0.02) * 50) + (float)(Math.Sin(x * 0.05) * 30);
+                mountainData[y * 800 + x] = y > height ? Color.DarkSlateGray : Color.Transparent;
+            }
+        }
+        _mountainsTexture.SetData(mountainData);
+
+        _cloudsTexture = new Texture2D(GraphicsDevice, 800, 100);
+        Color[] cloudData = new Color[800 * 100];
+        for (int i = 0; i < cloudData.Length; i++)
+        {
+            // Create some simple cloud shapes
+            float noise = (float)_random.NextDouble();
+            cloudData[i] = noise > 0.95f ? new Color(1f, 1f, 1f, 0.3f) : Color.Transparent;
+        }
+        _cloudsTexture.SetData(cloudData);
+
+        // Create background layers with different scroll speeds
+        _backgroundLayers = new List<BackgroundLayer>
+        {
+            new BackgroundLayer(_skyTexture, 0f, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Width),
+            new BackgroundLayer(_mountainsTexture, 0.2f, 1f, GraphicsDevice.Viewport.Width),
+            new BackgroundLayer(_cloudsTexture, 0.1f, 2f, GraphicsDevice.Viewport.Width)
+        };
 
         base.Initialize();
     }
@@ -105,6 +211,24 @@ public class Game1 : Game
         }
     }
 
+    private Food CreateFoodForPlatform(Rectangle platformBounds)
+    {
+        if (_random.Next(2) == 0) // 50% chance to spawn food
+        {
+            Vector2 foodPosition = new Vector2(
+                platformBounds.Center.X,
+                platformBounds.Top - 20 // Position above platform
+            );
+
+            // Randomly choose between orange and banana
+            FoodType foodType = (FoodType)_random.Next(2);
+            Texture2D foodTexture = foodType == FoodType.Orange ? _orangeTexture : _bananaTexture;
+            
+            return new Food(foodTexture, foodPosition, foodType);
+        }
+        return null;
+    }
+
     private void GenerateNextPlatform()
     {
         float gap = _random.NextSingle() * (MAX_PLATFORM_GAP - MIN_PLATFORM_GAP) + MIN_PLATFORM_GAP;
@@ -112,14 +236,39 @@ public class Game1 : Game
         float platformY = _baseY + (_random.NextSingle() * 2 - 1) * PLATFORM_Y_VARIATION;
         int platformWidth = _random.Next(100, 200);
         
-        _platforms.Add(new Platform(_platformTexture, 
-            new Rectangle((int)platformX, (int)platformY, platformWidth, 20)));
+        Rectangle platformBounds = new Rectangle((int)platformX, (int)platformY, platformWidth, 20);
+        Food food = CreateFoodForPlatform(platformBounds);
+        
+        _platforms.Add(new Platform(_platformTexture, platformBounds, food));
         _lastPlatformX = platformX + platformWidth;
+    }
+
+    private void CheckFoodCollection()
+    {
+        Rectangle playerBounds = new Rectangle(
+            (int)_player.Position.X - _playerBodyTexture.Width / 2,
+            (int)_player.Position.Y - _playerBodyTexture.Height / 2,
+            _playerBodyTexture.Width,
+            _playerBodyTexture.Height
+        );
+
+        foreach (var platform in _platforms)
+        {
+            if (platform.Food != null && !platform.Food.IsCollected && 
+                playerBounds.Intersects(platform.Food.Bounds))
+            {
+                platform.Food.Collect();
+                _score += FOOD_POINTS;
+            }
+        }
     }
 
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+        
+        // Load the head texture
+        _playerHeadTexture = Content.Load<Texture2D>("Noah");
         
         // Create a basic font texture for score display
         _scoreFont = Content.Load<SpriteFont>("Score");
@@ -138,7 +287,7 @@ public class Game1 : Game
         _lastPlatformX = 50;
         _platforms.Clear();
         GenerateInitialPlatforms();
-        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, new Vector2(100, 100));
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100));
     }
 
     protected override void Update(GameTime gameTime)
@@ -195,6 +344,21 @@ public class Game1 : Game
                 {
                     GenerateNextPlatform();
                 }
+
+                // Update background layers
+                float cameraX = _player.Position.X - GraphicsDevice.Viewport.Width * 0.3f;
+                foreach (var layer in _backgroundLayers)
+                {
+                    layer.Update(cameraX);
+                }
+
+                // Update platforms and check for food collection
+                foreach (var platform in _platforms)
+                {
+                    platform.Update(gameTime);
+                }
+                CheckFoodCollection();
+
                 break;
 
             case GameState.GameOver:
@@ -237,6 +401,15 @@ public class Game1 : Game
                 break;
 
             case GameState.Playing:
+                // Draw background layers without camera transform
+                _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+                foreach (var layer in _backgroundLayers)
+                {
+                    layer.Draw(_spriteBatch);
+                }
+                _spriteBatch.End();
+
+                // Draw game elements with camera transform
                 _spriteBatch.Begin(transformMatrix: _camera);
                 foreach (var platform in _platforms)
                 {
@@ -305,6 +478,12 @@ public class Game1 : Game
         _playerArmTexture.Dispose();
         _playerLegTexture.Dispose();
         _platformTexture.Dispose();
+        _skyTexture.Dispose();
+        _mountainsTexture.Dispose();
+        _cloudsTexture.Dispose();
+        _foodTexture.Dispose();
+        _orangeTexture.Dispose();
+        _bananaTexture.Dispose();
         base.UnloadContent();
     }
 }

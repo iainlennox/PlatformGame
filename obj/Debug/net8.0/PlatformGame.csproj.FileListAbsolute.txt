@@ -25,3 +25,4 @@ C:\Users\iain\source\repos\PlatformGame\obj\Debug\net8.0\PlatformGame.genruntime
 C:\Users\iain\source\repos\PlatformGame\obj\Debug\net8.0\ref\PlatformGame.dll
 C:\Users\iain\source\repos\PlatformGame\bin\Debug\net8.0\Content\Score.xnb
 C:\Users\iain\source\repos\PlatformGame\obj\Debug\net8.0\PlatformGame.sourcelink.json
+C:\Users\iain\source\repos\PlatformGame\bin\Debug\net8.0\Content\Noah.xnb

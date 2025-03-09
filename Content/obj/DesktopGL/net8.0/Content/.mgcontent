@@ -5,8 +5,10 @@
   <Config />
   <SourceFiles>
     <File>C:/Users/iain/source/repos/PlatformGame/Content/Score.spritefont</File>
+    <File>C:/Users/iain/source/repos/PlatformGame/Content/Noah.jpeg</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
   </DestFiles>
 </SourceFileCollection>
