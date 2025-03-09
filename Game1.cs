@@ -11,7 +11,9 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
     private Player _player;
-    private Texture2D _playerTexture;
+    private Texture2D _playerBodyTexture;
+    private Texture2D _playerArmTexture;
+    private Texture2D _playerLegTexture;
     private Texture2D _platformTexture;
     private List<Platform> _platforms;
     private Matrix _camera;
@@ -28,7 +30,7 @@ public class Game1 : Game
     private const float DEATH_Y_THRESHOLD = 800f; // Y position that triggers death
     private GameState _currentGameState;
     private KeyboardState _previousKeyboardState;
-    private string _titleText = "PLATFORM RUNNER";
+    private string _titleText = "NOAH'S GAME";
     private string _startPrompt = "Press SPACE to Start";
     private int _highScore;
     private string _gameOverText = "GAME OVER";
@@ -48,24 +50,40 @@ public class Game1 : Game
         _highScore = 0;
         _timeSinceStart = 0;
         _currentGameState = GameState.TitleScreen;
+        Window.Title = "Noah's Game";
     }
 
     protected override void Initialize()
     {
-        // Create textures
-        _playerTexture = new Texture2D(GraphicsDevice, 32, 32);
-        Color[] playerColorData = new Color[32 * 32];
-        for (int i = 0; i < playerColorData.Length; i++)
-            playerColorData[i] = Color.Red;
-        _playerTexture.SetData(playerColorData);
+        // Create player body texture (blue rectangle)
+        _playerBodyTexture = new Texture2D(GraphicsDevice, 20, 40);
+        Color[] bodyColorData = new Color[20 * 40];
+        for (int i = 0; i < bodyColorData.Length; i++)
+            bodyColorData[i] = Color.Blue;
+        _playerBodyTexture.SetData(bodyColorData);
 
+        // Create player arm texture (red rectangle)
+        _playerArmTexture = new Texture2D(GraphicsDevice, 8, 20);
+        Color[] armColorData = new Color[8 * 20];
+        for (int i = 0; i < armColorData.Length; i++)
+            armColorData[i] = Color.Red;
+        _playerArmTexture.SetData(armColorData);
+
+        // Create player leg texture (yellow rectangle)
+        _playerLegTexture = new Texture2D(GraphicsDevice, 8, 25);
+        Color[] legColorData = new Color[8 * 25];
+        for (int i = 0; i < legColorData.Length; i++)
+            legColorData[i] = Color.Yellow;
+        _playerLegTexture.SetData(legColorData);
+
+        // Create platform texture
         _platformTexture = new Texture2D(GraphicsDevice, 1, 1);
         Color[] platformColorData = new Color[1];
         platformColorData[0] = Color.Green;
         _platformTexture.SetData(platformColorData);
 
-        // Create the player
-        _player = new Player(_playerTexture, new Vector2(100, 100));
+        // Create the player with all body parts
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, new Vector2(100, 100));
 
         // Create initial platforms
         _lastPlatformX = 50;
@@ -120,7 +138,7 @@ public class Game1 : Game
         _lastPlatformX = 50;
         _platforms.Clear();
         GenerateInitialPlatforms();
-        _player = new Player(_playerTexture, new Vector2(100, 100));
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, new Vector2(100, 100));
     }
 
     protected override void Update(GameTime gameTime)
@@ -283,7 +301,9 @@ public class Game1 : Game
 
     protected override void UnloadContent()
     {
-        _playerTexture.Dispose();
+        _playerBodyTexture.Dispose();
+        _playerArmTexture.Dispose();
+        _playerLegTexture.Dispose();
         _platformTexture.Dispose();
         base.UnloadContent();
     }
