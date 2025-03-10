@@ -4,5 +4,6 @@ public enum GameState
 {
     TitleScreen,
     Playing,
+    LevelComplete,
     GameOver
 }

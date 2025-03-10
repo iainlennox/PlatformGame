@@ -48,6 +48,26 @@ public class Game1 : Game
     private Texture2D _bananaTexture;
     private const int FOOD_POINTS = 10;
 
+    // Add new fields for level management
+    private int _currentLevel = 1;
+    private const int MAX_LEVELS = 5;
+    private const int POINTS_TO_COMPLETE_LEVEL = 100;
+    private string _levelCompleteText = "LEVEL COMPLETE!";
+    private string _nextLevelPrompt = "Press SPACE for next level";
+    private int _foodCollected;
+    private float _levelTime;
+
+    // Add new fields for new fruit textures and progressive scoring
+    private Texture2D _appleTexture;
+    private Texture2D _grapeTexture;
+    private Texture2D _strawberryTexture;
+    private const int BASE_FOOD_POINTS = 10;
+    private const float SCORE_MULTIPLIER_PER_LEVEL = 1.5f;
+    private float _scoreMultiplier = 1.0f;
+
+    // Add to fields section
+    private List<FruitPopup> _fruitPopups = new List<FruitPopup>();
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -61,6 +81,7 @@ public class Game1 : Game
         _timeSinceStart = 0;
         _currentGameState = GameState.TitleScreen;
         Window.Title = "Noah's Game";
+        AudioManager.Initialize();
     }
 
     protected override void Initialize()
@@ -152,6 +173,68 @@ public class Game1 : Game
             }
         }
         _bananaTexture.SetData(bananaData);
+
+        // Create apple texture (red circle)
+        _appleTexture = new Texture2D(GraphicsDevice, 20, 20);
+        Color[] appleData = new Color[20 * 20];
+        for (int y = 0; y < 20; y++)
+        {
+            for (int x = 0; x < 20; x++)
+            {
+                float distanceFromCenter = (float)Math.Sqrt(Math.Pow(x - 10, 2) + Math.Pow(y - 10, 2));
+                if (distanceFromCenter <= 10)
+                {
+                    appleData[y * 20 + x] = Color.Red;
+                }
+                else
+                {
+                    appleData[y * 20 + x] = Color.Transparent;
+                }
+            }
+        }
+        _appleTexture.SetData(appleData);
+
+        // Create grape texture (purple circle)
+        _grapeTexture = new Texture2D(GraphicsDevice, 16, 16);
+        Color[] grapeData = new Color[16 * 16];
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 16; x++)
+            {
+                float distanceFromCenter = (float)Math.Sqrt(Math.Pow(x - 8, 2) + Math.Pow(y - 8, 2));
+                if (distanceFromCenter <= 8)
+                {
+                    grapeData[y * 16 + x] = Color.Purple;
+                }
+                else
+                {
+                    grapeData[y * 16 + x] = Color.Transparent;
+                }
+            }
+        }
+        _grapeTexture.SetData(grapeData);
+
+        // Create strawberry texture (heart-shaped)
+        _strawberryTexture = new Texture2D(GraphicsDevice, 20, 20);
+        Color[] strawberryData = new Color[20 * 20];
+        for (int y = 0; y < 20; y++)
+        {
+            for (int x = 0; x < 20; x++)
+            {
+                float px = (x - 10f) / 10f;
+                float py = (y - 10f) / 10f;
+                float distance = (float)Math.Sqrt(Math.Pow(px, 2) + Math.Pow(py + 0.3f, 2));
+                if (Math.Pow(px, 2) + Math.Pow(py - 0.3f, 2) <= 0.5f || distance <= 0.5f)
+                {
+                    strawberryData[y * 20 + x] = Color.Red;
+                }
+                else
+                {
+                    strawberryData[y * 20 + x] = Color.Transparent;
+                }
+            }
+        }
+        _strawberryTexture.SetData(strawberryData);
 
         // Create the player with all body parts
         _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100));
@@ -247,9 +330,16 @@ public class Game1 : Game
                 platformBounds.Top - 20 // Position above platform
             );
 
-            // Randomly choose between orange and banana
-            FoodType foodType = (FoodType)_random.Next(2);
-            Texture2D foodTexture = foodType == FoodType.Orange ? _orangeTexture : _bananaTexture;
+            FoodType foodType = (FoodType)_random.Next(5); // Now selecting from 5 fruit types
+            Texture2D foodTexture = foodType switch
+            {
+                FoodType.Orange => _orangeTexture,
+                FoodType.Banana => _bananaTexture,
+                FoodType.Apple => _appleTexture,
+                FoodType.Grape => _grapeTexture,
+                FoodType.Strawberry => _strawberryTexture,
+                _ => _orangeTexture
+            };
             
             return new Food(foodTexture, foodPosition, foodType);
         }
@@ -270,7 +360,7 @@ public class Game1 : Game
         _lastPlatformX = platformX + platformWidth;
     }
 
-    private void CheckFoodCollection()
+    private async void CheckFoodCollection()
     {
         Rectangle playerBounds = new Rectangle(
             (int)_player.Position.X - _playerBodyTexture.Width / 2,
@@ -285,7 +375,16 @@ public class Game1 : Game
                 playerBounds.Intersects(platform.Food.Bounds))
             {
                 platform.Food.Collect();
-                _score += FOOD_POINTS;
+                int points = (int)(BASE_FOOD_POINTS * _scoreMultiplier);
+                _score += points;
+                _foodCollected++;
+                
+                // Create popup at food's position
+                Vector2 popupPosition = new Vector2(platform.Food.Bounds.Center.X, platform.Food.Bounds.Top);
+                _fruitPopups.Add(new FruitPopup(platform.Food.Type.ToString(), popupPosition));
+
+                // Speak the fruit name
+                await AudioManager.SpeakAsync(platform.Food.Type.ToString());
             }
         }
     }
@@ -309,12 +408,29 @@ public class Game1 : Game
             _highScore = _score;
         }
         
+        _currentLevel = 1;
+        _scoreMultiplier = 1.0f;
         _score = 0;
         _timeSinceStart = 0;
+        _foodCollected = 0;
+        _levelTime = 0;
         _lastPlatformX = 50;
         _platforms.Clear();
         GenerateInitialPlatforms();
-        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100));
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100), _currentLevel);
+    }
+
+    private void StartNextLevel()
+    {
+        _currentLevel++;
+        _scoreMultiplier = 1.0f + ((_currentLevel - 1) * SCORE_MULTIPLIER_PER_LEVEL);
+        _timeSinceStart = 0;
+        _foodCollected = 0;
+        _levelTime = 0;
+        _lastPlatformX = 50;
+        _platforms.Clear();
+        GenerateInitialPlatforms();
+        _player = new Player(_playerBodyTexture, _playerArmTexture, _playerLegTexture, _playerHeadTexture, new Vector2(100, 100), _currentLevel);
     }
 
     protected override void Update(GameTime gameTime)
@@ -351,9 +467,29 @@ public class Game1 : Game
                     return;
                 }
 
-                // Update score based on time
+                // Update level time
+                _levelTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
                 _timeSinceStart += (float)gameTime.ElapsedGameTime.TotalSeconds;
-                _score = (int)(_timeSinceStart) + (_score - (int)_timeSinceStart); // Preserve food points
+                
+                // Check for level completion
+                if (_score >= POINTS_TO_COMPLETE_LEVEL * _currentLevel)
+                {
+                    if (_currentLevel < MAX_LEVELS)
+                    {
+                        _currentGameState = GameState.LevelComplete;
+                        return;
+                    }
+                    else
+                    {
+                        _currentGameState = GameState.GameOver;
+                        return;
+                    }
+                }
+
+                // Update score based on time with level multiplier
+                _levelTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _timeSinceStart += (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _score = (int)(_timeSinceStart * _scoreMultiplier) + (_score - (int)(_timeSinceStart * _scoreMultiplier)); // Preserve food points
 
                 _player.Update(gameTime, _platforms);
 
@@ -386,6 +522,21 @@ public class Game1 : Game
                 }
                 CheckFoodCollection();
 
+                // Update fruit popups
+                _fruitPopups.RemoveAll(popup => popup.IsExpired);
+                foreach (var popup in _fruitPopups)
+                {
+                    popup.Update(gameTime);
+                }
+
+                break;
+
+            case GameState.LevelComplete:
+                if (currentKeyboardState.IsKeyDown(Keys.Space) && !_previousKeyboardState.IsKeyDown(Keys.Space))
+                {
+                    StartNextLevel();
+                    _currentGameState = GameState.Playing;
+                }
                 break;
 
             case GameState.GameOver:
@@ -445,10 +596,49 @@ public class Game1 : Game
                 _player.Draw(_spriteBatch);
                 _spriteBatch.End();
 
-                // Draw score without camera transform
+                // Draw fruit popups with camera transform
+                foreach (var popup in _fruitPopups)
+                {
+                    popup.Draw(_spriteBatch, _scoreFont, _camera);
+                }
+
+                // Draw score and level without camera transform
                 _spriteBatch.Begin();
                 _spriteBatch.DrawString(_scoreFont, $"Score: {_score}", new Vector2(10, 10), Color.White);
                 _spriteBatch.DrawString(_scoreFont, $"High Score: {_highScore}", new Vector2(10, 40), Color.White);
+                _spriteBatch.DrawString(_scoreFont, $"Level: {_currentLevel}", new Vector2(10, 70), Color.White);
+                _spriteBatch.End();
+                break;
+
+            case GameState.LevelComplete:
+                _spriteBatch.Begin();
+
+                // Draw "LEVEL COMPLETE" text
+                Vector2 completeSize = _scoreFont.MeasureString(_levelCompleteText);
+                Vector2 completePos = new Vector2(
+                    (GraphicsDevice.Viewport.Width - completeSize.X) / 2,
+                    GraphicsDevice.Viewport.Height * 0.3f);
+                _spriteBatch.DrawString(_scoreFont, _levelCompleteText, completePos, Color.Green);
+
+                // Draw level stats
+                string levelStat = $"Level {_currentLevel} Complete!";
+                string timeStat = $"Time: {_levelTime:F1} seconds";
+                string foodStat = $"Food Collected: {_foodCollected}";
+                string scoreStat = $"Score: {_score}";
+
+                Vector2 statsPos = completePos + new Vector2(0, 60);
+                _spriteBatch.DrawString(_scoreFont, levelStat, statsPos, Color.White);
+                _spriteBatch.DrawString(_scoreFont, timeStat, statsPos + new Vector2(0, 30), Color.White);
+                _spriteBatch.DrawString(_scoreFont, foodStat, statsPos + new Vector2(0, 60), Color.White);
+                _spriteBatch.DrawString(_scoreFont, scoreStat, statsPos + new Vector2(0, 90), Color.White);
+
+                // Draw next level prompt
+                Vector2 nextLevelPromptSize = _scoreFont.MeasureString(_nextLevelPrompt);
+                Vector2 nextLevelPromptPos = new Vector2(
+                    (GraphicsDevice.Viewport.Width - nextLevelPromptSize.X) / 2,
+                    statsPos.Y + 150);
+                _spriteBatch.DrawString(_scoreFont, _nextLevelPrompt, nextLevelPromptPos, Color.Yellow);
+
                 _spriteBatch.End();
                 break;
 
@@ -511,6 +701,10 @@ public class Game1 : Game
         _foodTexture.Dispose();
         _orangeTexture.Dispose();
         _bananaTexture.Dispose();
+        _appleTexture.Dispose();
+        _grapeTexture.Dispose();
+        _strawberryTexture.Dispose();
+        AudioManager.Cleanup();
         base.UnloadContent();
     }
 }

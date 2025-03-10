@@ -20,6 +20,11 @@ public class Player
     private float minSpeed = 4f;  // Increased from 3f for faster minimum speed
     private KeyboardState previousKeyboardState;
 
+    private const float BASE_MIN_SPEED = 4f;
+    private const float BASE_MOVE_SPEED = 6f;
+    private const float SPEED_INCREASE_PER_LEVEL = 0.5f;
+    private int currentLevel;
+
     // Animation properties
     private float runningTime;
     private const float ANIMATION_SPEED = 0.1f;
@@ -47,7 +52,7 @@ public class Player
 
     public Vector2 Position => position;
 
-    public Player(Texture2D bodyTex, Texture2D armTex, Texture2D legTex, Texture2D headTex, Vector2 startPosition)
+    public Player(Texture2D bodyTex, Texture2D armTex, Texture2D legTex, Texture2D headTex, Vector2 startPosition, int level = 1)
     {
         this.bodyTexture = bodyTex;
         this.armTexture = armTex;
@@ -76,6 +81,17 @@ public class Player
         this.previousKeyboardState = Keyboard.GetState();
         this.runningTime = 0;
         this.currentFrame = 0;
+
+        this.currentLevel = level;
+        this.minSpeed = BASE_MIN_SPEED + (SPEED_INCREASE_PER_LEVEL * (level - 1));
+        this.moveSpeed = BASE_MOVE_SPEED + (SPEED_INCREASE_PER_LEVEL * (level - 1));
+    }
+
+    public void SetLevel(int level)
+    {
+        currentLevel = level;
+        minSpeed = BASE_MIN_SPEED + (SPEED_INCREASE_PER_LEVEL * (level - 1));
+        moveSpeed = BASE_MOVE_SPEED + (SPEED_INCREASE_PER_LEVEL * (level - 1));
     }
 
     public void Update(GameTime gameTime, List<Platform> platforms)
