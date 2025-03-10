@@ -13,11 +13,11 @@ public class Player
     private Rectangle bounds;
     private bool isJumping;
     private int jumpsRemaining;
-    private float jumpForce = -12f;
-    private float doubleJumpForce = -15f;
+    private float jumpForce = -15f;  // Increased from -12f for higher jumps
+    private float doubleJumpForce = -17f;  // Increased from -15f for higher double jumps
     private float gravity = 0.5f;
-    private float moveSpeed = 5f;
-    private float minSpeed = 3f;
+    private float moveSpeed = 6f;  // Increased from 5f for faster movement
+    private float minSpeed = 4f;  // Increased from 3f for faster minimum speed
     private KeyboardState previousKeyboardState;
 
     // Animation properties

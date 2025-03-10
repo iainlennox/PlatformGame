@@ -20,9 +20,9 @@ public class Game1 : Game
     private Matrix _camera;
     private Random _random;
     private float _lastPlatformX;
-    private const float MIN_PLATFORM_GAP = 100f;
-    private const float MAX_PLATFORM_GAP = 250f;
-    private const float PLATFORM_Y_VARIATION = 100f;
+    private const float MIN_PLATFORM_GAP = 200f;  // Decreased from 300f to make gaps more manageable
+    private const float MAX_PLATFORM_GAP = 350f;  // Decreased from 450f to ensure jumps are possible
+    private const float PLATFORM_Y_VARIATION = 100f;  // Decreased from 150f to reduce height differences
     private float _baseY = 300f;
     private SpriteFont _scoreFont;
     private int _score;
@@ -177,13 +177,40 @@ public class Game1 : Game
         }
         _mountainsTexture.SetData(mountainData);
 
-        _cloudsTexture = new Texture2D(GraphicsDevice, 800, 100);
-        Color[] cloudData = new Color[800 * 100];
-        for (int i = 0; i < cloudData.Length; i++)
+        _cloudsTexture = new Texture2D(GraphicsDevice, 800, 200); // Made taller for larger clouds
+        Color[] cloudData = new Color[800 * 200];
+        
+        // Create 5 large clouds
+        for (int cloud = 0; cloud < 5; cloud++)
         {
-            // Create some simple cloud shapes
-            float noise = (float)_random.NextDouble();
-            cloudData[i] = noise > 0.95f ? new Color(1f, 1f, 1f, 0.3f) : Color.Transparent;
+            float cloudCenterX = cloud * 160; // Evenly space the clouds
+            float cloudCenterY = 80 + _random.Next(-30, 30); // Vary the height slightly
+            float cloudSize = 40 + _random.Next(20); // Vary the cloud size
+
+            // Draw each cloud
+            for (int y = 0; y < 200; y++)
+            {
+                for (int x = 0; x < 800; x++)
+                {
+                    int index = y * 800 + x;
+                    float distanceFromCloud = (float)Math.Sqrt(
+                        Math.Pow(x - cloudCenterX, 2) / (cloudSize * 3) + 
+                        Math.Pow(y - cloudCenterY, 2) / cloudSize
+                    );
+
+                    if (distanceFromCloud < 4)
+                    {
+                        float opacity = (4 - distanceFromCloud) / 4;
+                        opacity = Math.Min(opacity, 1);
+                        
+                        // If there's already a cloud pixel here, use the higher opacity
+                        float existingOpacity = cloudData[index].A / 255f;
+                        opacity = Math.Max(opacity, existingOpacity);
+                        
+                        cloudData[index] = new Color(1f, 1f, 1f, opacity * 0.7f);
+                    }
+                }
+            }
         }
         _cloudsTexture.SetData(cloudData);
 
@@ -192,7 +219,7 @@ public class Game1 : Game
         {
             new BackgroundLayer(_skyTexture, 0f, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Width),
             new BackgroundLayer(_mountainsTexture, 0.2f, 1f, GraphicsDevice.Viewport.Width),
-            new BackgroundLayer(_cloudsTexture, 0.1f, 2f, GraphicsDevice.Viewport.Width)
+            new BackgroundLayer(_cloudsTexture, 0.1f, 1f, GraphicsDevice.Viewport.Width) // Adjusted scale to 1f
         };
 
         base.Initialize();
@@ -200,12 +227,12 @@ public class Game1 : Game
 
     private void GenerateInitialPlatforms()
     {
-        // Create starting platform
-        _platforms.Add(new Platform(_platformTexture, new Rectangle(50, 400, 200, 20)));
-        _lastPlatformX = 250;
+        // Create starting platform - made wider
+        _platforms.Add(new Platform(_platformTexture, new Rectangle(50, 400, 400, 30)));
+        _lastPlatformX = 450;
 
-        // Generate a few platforms ahead
-        for (int i = 0; i < 5; i++)
+        // Generate fewer initial platforms
+        for (int i = 0; i < 3; i++)
         {
             GenerateNextPlatform();
         }
@@ -234,9 +261,9 @@ public class Game1 : Game
         float gap = _random.NextSingle() * (MAX_PLATFORM_GAP - MIN_PLATFORM_GAP) + MIN_PLATFORM_GAP;
         float platformX = _lastPlatformX + gap;
         float platformY = _baseY + (_random.NextSingle() * 2 - 1) * PLATFORM_Y_VARIATION;
-        int platformWidth = _random.Next(100, 200);
+        int platformWidth = _random.Next(300, 500); // Increased platform width range
         
-        Rectangle platformBounds = new Rectangle((int)platformX, (int)platformY, platformWidth, 20);
+        Rectangle platformBounds = new Rectangle((int)platformX, (int)platformY, platformWidth, 30); // Increased height to 30
         Food food = CreateFoodForPlatform(platformBounds);
         
         _platforms.Add(new Platform(_platformTexture, platformBounds, food));
